@@ -1,5 +1,7 @@
-from flask import Blueprint,jsonify
+from io import StringIO
+from flask import Blueprint, Response,jsonify, make_response
 from flask import request
+import pandas
 
 from apps.decorators import validate_request
 
@@ -9,16 +11,15 @@ from flask import g
 test_module = Blueprint("employee_module", __name__, url_prefix="/employee")
 
 def get_db():
-    print("jdjdj")
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(DATABASE)
-        print(db)
     return db
 
 @test_module.route("/insert", methods=["POST"])
 @validate_request("name", "age","department","email")
 def employee_insertion_api():
+    
     try:
         db = get_db()
         cursor = db.cursor()
@@ -67,6 +68,12 @@ def get_employee():
 
 @test_module.route("/update", methods=["PUT"])
 def update_employee():
+    """
+    TO update the employee based on id
+
+    Returns:
+        string: updated,invalid id,or email already exist
+    """
     try:
         db = get_db()
         cursor = db.cursor()
@@ -108,6 +115,12 @@ def update_employee():
 
 @test_module.route("/delete", methods=["DELETE"])
 def delete_employe():
+    """
+    TO DELETE AN EMPLOYEE
+
+    Returns:
+        string: deleted or invalid id
+    """
     try:
         db = get_db()
         cursor = db.cursor()
@@ -119,9 +132,34 @@ def delete_employe():
             return jsonify(message = "invalid id"),404
         db.commit()
         db.close()
-        return jsonify(message = "deleted")
+        return jsonify(message = "deleted"),200
     except Exception as exc:
         print(f'error occure in delete function {exc}')
         db.close()
+
+@test_module.route("/csv", methods=["POST"])
+def export_csv():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM Employee")
+        employeed_data = cursor.fetchall()
+        if employeed_data:
+            csv_buffer = StringIO()
+            df = pandas.DataFrame(employeed_data, columns=['id', 'name', 'email', 'age', 'password'])
+            df.to_csv(csv_buffer, index=False)
+            csv_data = csv_buffer.getvalue()
+
+            # make Flask response
+            response = make_response(csv_data)
+            response.headers["Content-Disposition"] = "attachment; filename=employee.csv"
+            response.headers["Content-Type"] = "text/csv"
+
+            return response
+            
+    except Exception as exc:
+        print("error occured in export csv")
+
+
 
 

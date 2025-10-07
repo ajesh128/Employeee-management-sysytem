@@ -17,7 +17,6 @@ def create_app(config_type="config.Config"):
 def db_has_tables(db_path):
     """Check if the SQLite database has any user tables"""
     if not path.exists(db_path):
-        print("hell0oooooooo")
         return False
 
     connection = sqlite3.connect(db_path)

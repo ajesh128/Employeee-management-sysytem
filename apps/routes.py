@@ -1,0 +1,127 @@
+from flask import Blueprint,jsonify
+from flask import request
+
+from apps.decorators import validate_request
+
+DATABASE = "apps/database.db"
+import sqlite3
+from flask import g
+test_module = Blueprint("employee_module", __name__, url_prefix="/employee")
+
+def get_db():
+    print("jdjdj")
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        print(db)
+    return db
+
+@test_module.route("/insert", methods=["POST"])
+@validate_request("name", "age","department","email")
+def employee_insertion_api():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        name = request.json.get("name")
+        age = request.json.get("age")
+        department = request.json.get("department")
+        email = request.json.get("email")
+        try:
+            cursor.execute("""
+            INSERT INTO Employee (name, email, age, department)
+            VALUES (?, ?, ?, ?)
+        """, (name, email, age, department))
+            db.commit()
+            db.close()
+        except sqlite3.IntegrityError as e:
+            db.close()
+            return jsonify(message = "email already exist")
+
+        return jsonify(message = "inserted"),200
+    except Exception as exc:
+        print(f"error occure in inserting function {exc}")
+
+@test_module.route("/get/employee", methods=["GET"])
+def get_employee():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        # SETTING THE LIMIT
+        limit = 2
+        offset = request.args.get("offset",0)
+        if offset == 0:
+            offset = 1
+        # SETTING THE OFFSET VALUE
+        offset = (int(offset) - 1) * limit
+        department = request.args.get("department",None)
+        cursor.execute("SELECT * FROM Employee WHERE(? is NULL OR department = ?) LIMIT ? OFFSET ?",(department,department,limit,offset))
+        employee_data = cursor.fetchall()
+        db.close()
+        if employee_data:
+            return jsonify(message = employee_data),200
+        else:
+            return jsonify(message = "Not found"),404
+    except Exception as exc:
+        print("error occured in get employee function")
+    
+
+@test_module.route("/update", methods=["PUT"])
+def update_employee():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        id = request.args.get("id")
+        if not request.is_json or not request.json or not id:
+            db.close()
+            return jsonify(message ="mandatory field required"),400
+        new_name = request.json.get("name")
+        updating_filed_list = []
+        field_list = []
+        email = request.json.get("email")
+        department = request.json.get("department")
+        if email:
+            updating_filed_list.append(email)
+            field_list.append("email = ?")
+        if new_name:
+            updating_filed_list.append(new_name)
+            field_list.append("name = ?")
+        if department:
+            updating_filed_list.append(new_name)
+            field_list.append("name = ?")
+        if updating_filed_list:
+            updating_filed_list.append(id)
+            try:
+                sql = f"UPDATE Employee SET {', '.join(field_list)} WHERE id = ?"
+                cursor.execute(sql, updating_filed_list)
+                db.commit()
+                db.close()
+            except sqlite3.IntegrityError as e:
+                db.close()
+                return jsonify(message = "email already exist")
+            if cursor.rowcount == 0:
+                return jsonify(message = "invalid id"),404
+            return jsonify(message = "updated"),200
+    except Exception as exc:
+        print("error occured in update_employee")
+        db.close()
+
+
+@test_module.route("/delete", methods=["DELETE"])
+def delete_employe():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        id = request.args.get("id")
+        if not id:
+            return jsonify (message = "mandatory field required"),400
+        cursor.execute("DELETE FROM Employee where id = ?",(id,))
+        if cursor.rowcount == 0:
+            return jsonify(message = "invalid id"),404
+        db.commit()
+        db.close()
+        return jsonify(message = "deleted")
+    except Exception as exc:
+        print(f'error occure in delete function {exc}')
+        db.close()
+
+

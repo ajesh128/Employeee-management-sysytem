@@ -2,6 +2,7 @@ from io import StringIO
 from flask import Blueprint, Response,jsonify, make_response
 from flask import request
 import pandas
+from flask_jwt_extended import jwt_required
 
 from apps.decorators import validate_request
 
@@ -17,9 +18,15 @@ def get_db():
     return db
 
 @test_module.route("/insert", methods=["POST"])
+@jwt_required()
 @validate_request("name", "age","department","email")
 def employee_insertion_api():
-    
+    """
+    TO INSERT EMPLOYEE DETAILS TO EMPLOYEE TABLE
+
+    Returns:
+        str: message
+    """
     try:
         db = get_db()
         cursor = db.cursor()
@@ -28,6 +35,7 @@ def employee_insertion_api():
         department = request.json.get("department")
         email = request.json.get("email")
         try:
+            # To insert in to employee
             cursor.execute("""
             INSERT INTO Employee (name, email, age, department)
             VALUES (?, ?, ?, ?)
@@ -41,9 +49,17 @@ def employee_insertion_api():
         return jsonify(message = "inserted"),200
     except Exception as exc:
         print(f"error occure in inserting function {exc}")
+        db.close()
 
 @test_module.route("/get/employee", methods=["GET"])
+@jwt_required()
 def get_employee():
+    """
+    TO GET ALL THE EMPLOYEE DETAILS OR FOR THE SPECIFIC DEPARTMENT
+
+    Returns:
+        list: Containing information of employees
+    """
     try:
         db = get_db()
         cursor = db.cursor()
@@ -55,6 +71,7 @@ def get_employee():
         # SETTING THE OFFSET VALUE
         offset = (int(offset) - 1) * limit
         department = request.args.get("department",None)
+        # Query to fetch employee details
         cursor.execute("SELECT * FROM Employee WHERE(? is NULL OR department = ?) LIMIT ? OFFSET ?",(department,department,limit,offset))
         employee_data = cursor.fetchall()
         db.close()
@@ -63,10 +80,12 @@ def get_employee():
         else:
             return jsonify(message = "Not found"),404
     except Exception as exc:
-        print("error occured in get employee function")
+        print(f"error occured in get employee function {exc}")
+        db.close()
     
 
 @test_module.route("/update", methods=["PUT"])
+@jwt_required()
 def update_employee():
     """
     TO update the employee based on id
@@ -86,12 +105,15 @@ def update_employee():
         field_list = []
         email = request.json.get("email")
         department = request.json.get("department")
+        # checking email
         if email:
             updating_filed_list.append(email)
             field_list.append("email = ?")
+        # checking name
         if new_name:
             updating_filed_list.append(new_name)
             field_list.append("name = ?")
+        # checking department
         if department:
             updating_filed_list.append(new_name)
             field_list.append("name = ?")
@@ -114,6 +136,7 @@ def update_employee():
 
 
 @test_module.route("/delete", methods=["DELETE"])
+@jwt_required()
 def delete_employe():
     """
     TO DELETE AN EMPLOYEE
@@ -127,6 +150,7 @@ def delete_employe():
         id = request.args.get("id")
         if not id:
             return jsonify (message = "mandatory field required"),400
+        # deleting employee
         cursor.execute("DELETE FROM Employee where id = ?",(id,))
         if cursor.rowcount == 0:
             return jsonify(message = "invalid id"),404
@@ -138,14 +162,23 @@ def delete_employe():
         db.close()
 
 @test_module.route("/csv", methods=["POST"])
+@jwt_required()
 def export_csv():
+    """
+    TO RETURN CSV RESPONSE WHICH IS FETCHED FROM Employee table
+
+    Returns:
+        file: csv
+    """
     try:
         db = get_db()
         cursor = db.cursor()
         cursor.execute("SELECT * FROM Employee")
         employeed_data = cursor.fetchall()
+        db.close()
         if employeed_data:
             csv_buffer = StringIO()
+            # converting in to csv
             df = pandas.DataFrame(employeed_data, columns=['id', 'name', 'email', 'age', 'password'])
             df.to_csv(csv_buffer, index=False)
             csv_data = csv_buffer.getvalue()
@@ -154,11 +187,11 @@ def export_csv():
             response = make_response(csv_data)
             response.headers["Content-Disposition"] = "attachment; filename=employee.csv"
             response.headers["Content-Type"] = "text/csv"
-
             return response
             
     except Exception as exc:
-        print("error occured in export csv")
+        print(f"error occured in export csv,{exc}")
+        db.close()
 
 
 

@@ -64,7 +64,7 @@ def get_employee():
         db = get_db()
         cursor = db.cursor()
         # SETTING THE LIMIT
-        limit = 2
+        limit = 15
         offset = request.args.get("offset",0)
         if offset == 0:
             offset = 1

@@ -1,2 +1,4 @@
+import os
+
 class Config:
-    pass
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "YOUR KEY")

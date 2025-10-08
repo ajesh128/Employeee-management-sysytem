@@ -2,10 +2,13 @@ import sqlite3
 from os import path
 from flask import Flask
 from apps.routes import test_module
+from flask_jwt_extended import JWTManager
+jwt = JWTManager()
 
 def create_app(config_type="config.Config"):
     app = Flask(__name__)
     app.config.from_object(obj=config_type)
+    jwt.init_app(app)
 
     if not db_has_tables("apps/database.db"):
         init_sqldb()

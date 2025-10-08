@@ -64,7 +64,7 @@ def get_employee():
         db = get_db()
         cursor = db.cursor()
         # SETTING THE LIMIT
-        limit = 2
+        limit = 10
         offset = request.args.get("offset",0)
         if offset == 0:
             offset = 1
@@ -177,17 +177,11 @@ def export_csv():
         employeed_data = cursor.fetchall()
         db.close()
         if employeed_data:
-            csv_buffer = StringIO()
             # converting in to csv
             df = pandas.DataFrame(employeed_data, columns=['id', 'name', 'email', 'age', 'password'])
-            df.to_csv(csv_buffer, index=False)
-            csv_data = csv_buffer.getvalue()
-
-            # make Flask response
-            response = make_response(csv_data)
-            response.headers["Content-Disposition"] = "attachment; filename=employee.csv"
-            response.headers["Content-Type"] = "text/csv"
-            return response
+            df.to_csv("apps/employee-data.csv", index=False)
+            return jsonify(message = "Csv uploaded")
+        return jsonify(message = "No data found"),404
             
     except Exception as exc:
         print(f"error occured in export csv,{exc}")

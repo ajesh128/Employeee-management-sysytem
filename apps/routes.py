@@ -180,7 +180,7 @@ def export_csv():
             # converting in to csv
             df = pandas.DataFrame(employeed_data, columns=['id', 'name', 'email', 'age', 'password'])
             df.to_csv("apps/employee-data.csv", index=False)
-            return jsonify(message = "Csv uploaded")
+            return jsonify(message = "Csv uploaded"),200
         return jsonify(message = "No data found"),404
             
     except Exception as exc:
